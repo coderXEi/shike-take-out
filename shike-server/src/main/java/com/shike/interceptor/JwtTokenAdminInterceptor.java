@@ -41,7 +41,7 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
             //当前拦截到的不是动态方法，直接放行
             return true;
         }
-        // 对登录 请求 不需要获取token
+        // 使用NoAuth注解 标识哪些请求不加入日志
         HandlerMethod handlerMethod = (HandlerMethod) handler;
         NoAuth noAuth = handlerMethod.getMethodAnnotation(NoAuth.class);
         if(noAuth != null) {
@@ -56,8 +56,8 @@ public class JwtTokenAdminInterceptor implements HandlerInterceptor {
         try {
             log.info("jwt校验:{}", token);
             Claims claims = JwtUtil.parseJWT(jwtProperties.getAdminSecretKey(), token);
-//            Long empId = Long.valueOf(claims.get(JwtClaimsConstant.EMP_ID).toString());
-            Integer empId = claims.get(JwtClaimsConstant.EMP_ID, Integer.class);
+            Long empId = Long.valueOf(claims.get(JwtClaimsConstant.EMP_ID).toString());
+//            Integer empId = claims.get(JwtClaimsConstant.EMP_ID, Integer.class);
             log.info("当前员工id：", empId);
             // 保存用户id
             CurrentHolder.set(empId);

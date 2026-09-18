@@ -3,15 +3,15 @@ package com.shike.utils;
 
 
 public class CurrentHolder {
-    private static final ThreadLocal<Integer> CURRENT_LOCAL = new ThreadLocal<>();
+    private static final ThreadLocal<Long> CURRENT_LOCAL = new ThreadLocal<>();
 
 
-    public static void set(Integer id) {
+    public static void set(Long id) {
 
         CURRENT_LOCAL.set(id);
     }
 
-    public static Integer get() {
+    public static Long get() {
         return CURRENT_LOCAL.get();
     }
 

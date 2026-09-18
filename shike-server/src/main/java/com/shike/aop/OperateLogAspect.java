@@ -60,8 +60,7 @@ public class OperateLogAspect {
         return result;
 
     }
-
-    public int getCurrentUserId() {
+    public Long getCurrentUserId() {
         return CurrentHolder.get();
     }
 

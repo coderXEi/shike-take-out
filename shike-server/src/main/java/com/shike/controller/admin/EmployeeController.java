@@ -1,7 +1,9 @@
 package com.shike.controller.admin;
 
+import com.shike.anno.Log;
 import com.shike.anno.NoAuth;
 import com.shike.constant.JwtClaimsConstant;
+import com.shike.dto.EmployeeDTO;
 import com.shike.dto.EmployeeLoginDTO;
 import com.shike.entity.Employee;
 import com.shike.properties.JwtProperties;
@@ -44,6 +46,7 @@ public class EmployeeController {
     @PostMapping("/login")
     @ApiOperation(value="处理员工登录")
     @NoAuth
+    // DTO 前端给后端传的数据   VO 从数据库查到的数据 后端传给前端
     public Result<EmployeeLoginVO> login(@RequestBody EmployeeLoginDTO employeeLoginDTO) {
         log.info("员工登录：{}", employeeLoginDTO);
 
@@ -77,5 +80,18 @@ public class EmployeeController {
     public Result<String> logout() {
         return Result.success();
     }
+
+
+    @PostMapping
+    @ApiOperation("新增员工接口")
+    @Log
+    public Result<String> save(EmployeeDTO employeeDTO) {
+
+        log.info("正在新增员工接受到参数:{}",employeeDTO);
+
+        employeeService.save(employeeDTO);
+        return Result.success();
+    }
+
 
 }

@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 @Data
 public class OperateLogDTO {
     private Integer id; //ID
-    private Integer operateEmpId; //操作人ID
+    private Long operateEmpId; //操作人ID
     private LocalDateTime operateTime; //操作时间
     private String className; //操作类名
     private String methodName; //操作方法名
