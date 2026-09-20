@@ -1,10 +1,15 @@
 package com.shike.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.shike.interceptor.JwtTokenAdminInterceptor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
@@ -14,6 +19,9 @@ import springfox.documentation.builders.RequestHandlerSelectors;
 import springfox.documentation.service.ApiInfo;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
+
+import java.text.SimpleDateFormat;
+import java.util.List;
 
 /**
  * 配置类，注册web层相关组件
@@ -42,6 +50,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
     /**
      * 通过knife4j生成接口文档
+     *
      * @return
      */
     @Bean
@@ -62,6 +71,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
     /**
      * 设置静态资源映射
+     *
      * @param registry
      */
     @Override
@@ -69,4 +79,23 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
     }
+
+    /**
+     * 添加消息转换器  spring mvc提供
+     */
+        protected void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+            log.info("自定义消息转换器");
+            // 创建消息转换器
+            MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+
+            // 创建 ObjectMapper 并注册 JavaTimeModule 以支持 LocalDateTime
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModules(new JavaTimeModule());
+            objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            // 设置日期格式
+            objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
+
+            converter.setObjectMapper(objectMapper);
+            converters.add(0, converter);
+        }
 }

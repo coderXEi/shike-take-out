@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.shike.mapper.CategoryMapper">
+    <select id="page" resultType="com.shike.vo.CategoryVO">
+        select * from category
+        <where>
+            <if test="name !=null and name !=''">
+                and name like concat("%",#{name},"%")
+            </if>
+            <if test="type!=null">and type = #{type}</if>
+        </where>
+        order by sort asc,create_time desc
+    </select>
+
+    <select id="get" resultType="com.shike.vo.CategoryVO">
+        select * from category
+        <where>
+
+            <if test="type !=null">
+                    type = #{type}
+            </if>
+        </where>
+
+    </select>
+
+</mapper>

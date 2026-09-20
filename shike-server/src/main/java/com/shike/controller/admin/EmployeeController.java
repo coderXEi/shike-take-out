@@ -5,20 +5,20 @@ import com.shike.anno.NoAuth;
 import com.shike.constant.JwtClaimsConstant;
 import com.shike.dto.EmployeeDTO;
 import com.shike.dto.EmployeeLoginDTO;
+import com.shike.dto.EmployeePageQueryDTO;
 import com.shike.entity.Employee;
 import com.shike.properties.JwtProperties;
+import com.shike.result.PageResult;
 import com.shike.result.Result;
 import com.shike.service.EmployeeService;
 import com.shike.utils.JwtUtil;
 import com.shike.vo.EmployeeLoginVO;
+import com.shike.vo.EmployeeVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -93,5 +93,43 @@ public class EmployeeController {
         return Result.success();
     }
 
+    @GetMapping("/page")
+    @ApiOperation("员工列表分页查询接口")
+    public Result<PageResult> page(EmployeePageQueryDTO employeePageQueryDTO) {
 
+        log.info("员工分页查询参数:{}",employeePageQueryDTO);
+        PageResult pr =  employeeService.pageQuery(employeePageQueryDTO);
+        return Result.success(pr);
+    }
+    @PostMapping("/status/{status}")
+    @ApiOperation("启用或禁用员工")
+    public Result<?> startOrStop(@PathVariable Integer status,Long id) {
+        log.info("禁用或启用员工账户:{},{}",status,id);
+
+        employeeService.startOrStop(status,id);
+        return Result.success();
+    }
+    /**
+     * 根据id 查询员工信息
+     */
+    @GetMapping("/{id}")
+    @ApiOperation("根据id获取员工信息接口")
+    public Result<EmployeeVO> getById(@PathVariable Long id) {
+
+        log.info("根据id查询员工信息 {}",id);
+        EmployeeVO emp = employeeService.getEmpById(id);
+
+        return Result.success(emp);
+    }
+
+    /**
+     * 更新员工信息
+     */
+    @PutMapping
+    @ApiOperation("更新员工信息")
+    public Result updateEmp(@RequestBody EmployeeDTO employeeDTO) {
+        log.info("更新员工信息{}",employeeDTO);
+        employeeService.update(employeeDTO);
+        return Result.success();
+    }
 }
