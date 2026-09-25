@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController("userShopController")
 @Slf4j
-@RequestMapping("/user/status")
+@RequestMapping("/user/shop")
 @Api(tags = "店铺设置接口")
 public class ShopController {
     // 类名相同 创建在IOC容器的bean 名称相同 是默认值 类名小写
