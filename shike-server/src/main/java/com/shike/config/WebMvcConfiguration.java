@@ -1,9 +1,7 @@
 package com.shike.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.shike.interceptor.JwtTokenAdminInterceptor;
+import com.shike.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -20,7 +18,6 @@ import springfox.documentation.service.ApiInfo;
 import springfox.documentation.spi.DocumentationType;
 import springfox.documentation.spring.web.plugins.Docket;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
 
 /**
@@ -82,20 +79,18 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
     /**
      * 添加消息转换器  spring mvc提供
+     *
+     * @param converters 消息转换器列表
      */
-        protected void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
-            log.info("自定义消息转换器");
-            // 创建消息转换器
-            MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
-
-            // 创建 ObjectMapper 并注册 JavaTimeModule 以支持 LocalDateTime
-            ObjectMapper objectMapper = new ObjectMapper();
-            objectMapper.registerModules(new JavaTimeModule());
-            objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-            // 设置日期格式
-            objectMapper.setDateFormat(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss"));
-
-            converter.setObjectMapper(objectMapper);
-            converters.add(0, converter);
-        }
+    @Override
+    protected void extendMessageConverters(List<HttpMessageConverter<?>> converters) {
+        log.info("自定义消息转换器");
+        // 创建消息转换器
+        MappingJackson2HttpMessageConverter converter = new MappingJackson2HttpMessageConverter();
+        // 使用项目自定义的 JacksonObjectMapper：
+        // 1. 忽略未知属性（反序列化时不因多余字段报错）
+        // 2. 统一 LocalDateTime/LocalDate/LocalTime 的序列化与反序列化格式
+        converter.setObjectMapper(new JacksonObjectMapper());
+        converters.add(0, converter);
+    }
 }
