@@ -228,3 +228,39 @@ CREATE TABLE IF NOT EXISTS `operate_log` (
 -- ----------------------------
 INSERT INTO `employee` (`name`, `username`, `password`, `phone`, `sex`, `id_number`, `status`, `create_time`, `update_time`, `create_user`, `update_user`)
 VALUES ('管理员', 'admin', 'e10adc3949ba59abbe56e057f20f883e', '13800138000', '1', '110101199001011234', 1, NOW(), NOW(), 1, 1);
+
+-- ----------------------------
+-- 13. 店铺表
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `shop` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` varchar(64) NOT NULL COMMENT '店铺名称',
+  `logo` varchar(255) DEFAULT NULL COMMENT '店铺logo图片',
+  `phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
+  `address` varchar(255) DEFAULT NULL COMMENT '店铺地址',
+  `longitude` decimal(11,7) DEFAULT NULL COMMENT '经度',
+  `latitude` decimal(10,7) DEFAULT NULL COMMENT '纬度',
+  `description` varchar(255) DEFAULT NULL COMMENT '店铺简介',
+  `notice` varchar(255) DEFAULT NULL COMMENT '公告',
+  `open_time` time DEFAULT NULL COMMENT '开始营业时间',
+  `close_time` time DEFAULT NULL COMMENT '结束营业时间',
+  `status` int NOT NULL DEFAULT 1 COMMENT '营业状态 0:打烊 1:营业',
+  `min_amount` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '起送金额',
+  `delivery_fee` decimal(10,2) NOT NULL DEFAULT 0.00 COMMENT '配送费',
+  `create_time` datetime NOT NULL COMMENT '创建时间',
+  `update_time` datetime NOT NULL COMMENT '更新时间',
+  `create_user` bigint NOT NULL COMMENT '创建人',
+  `update_user` bigint NOT NULL COMMENT '修改人',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='店铺表';
+
+-- 初始化一条店铺记录
+INSERT INTO `shop`
+(`name`,`logo`,`phone`,`address`,`longitude`,`latitude`,`description`,`notice`,
+ `open_time`,`close_time`,`status`,`min_amount`,`delivery_fee`,
+ `create_time`,`update_time`,`create_user`,`update_user`)
+VALUES
+('食刻外卖','','400-000-0000','北京市朝阳区xxx路1号',116.3971280,39.9165270,
+ '专注为顾客提供美味、健康、快捷的餐饮服务','新店开业，全场满30减5元',
+ '08:00:00','22:00:00',1,20.00,3.00,
+ NOW(),NOW(),1,1);

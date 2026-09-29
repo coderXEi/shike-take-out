@@ -14,7 +14,7 @@ public interface UserMapper {
 
     /**
      * 新增用户
-     * @return
+     * @return 影响行数
      */
-    User insert(User user);
+    int insert(User user);
 }

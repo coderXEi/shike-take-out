@@ -63,6 +63,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public List<Category> list(Integer type) {
-        return null;
+        List<Category> list = categoryMapper.list(type);
+        return list != null ? list : java.util.Collections.emptyList();
     }
 }

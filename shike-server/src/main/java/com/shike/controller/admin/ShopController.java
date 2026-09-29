@@ -2,12 +2,11 @@ package com.shike.controller.admin;
 
 
 import com.shike.result.Result;
+import com.shike.service.ShopService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.web.bind.annotation.*;
 
 @RestController("adminShopController")
@@ -16,10 +15,8 @@ import org.springframework.web.bind.annotation.*;
 @Api(tags = "店铺设置接口")
 public class ShopController {
 
-    public static final String KEY = "SHOP_STATUS";
-
     @Autowired
-    RedisTemplate redisTemplate;
+    private ShopService shopService;
 
 
     /**
@@ -33,9 +30,7 @@ public class ShopController {
     public Result setStatus(@PathVariable Integer status) {
         log.info("设置店铺营业状态:{}", status == 1 ? "营业" : "打烊 ");
 
-        ValueOperations valueOperations = redisTemplate.opsForValue();
-
-        valueOperations.set(KEY, status);
+        shopService.setStatus(status);
         return Result.success();
     }
 
@@ -46,8 +41,8 @@ public class ShopController {
     @ApiOperation("获取店铺营业状态")
     public Result getStatus() {
 
-        Integer shopStatus =(Integer) redisTemplate.opsForValue().get(KEY);
-        log.info("获取店铺的营业状态{}",shopStatus ==1 ? "营业" :"打烊");
+        Integer shopStatus = shopService.getStatus();
+        log.info("获取店铺的营业状态{}", shopStatus == null ? "未知" : (shopStatus == 1 ? "营业" : "打烊"));
         return Result.success();
     }
 }

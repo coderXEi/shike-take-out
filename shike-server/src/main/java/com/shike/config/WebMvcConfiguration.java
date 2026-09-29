@@ -53,7 +53,10 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
         registry.addInterceptor(jwtTokenUserInterceptor)
                 // 将拦截器注册在user下
                 .addPathPatterns("/user/**")
-                .excludePathPatterns("/user/user/login");
+                // 微信登录接口无需token
+                .excludePathPatterns("/user/user")
+                // 店铺营业状态查询无需登录（与admin端保持一致）
+                .excludePathPatterns("/user/shop/status");
     }
 
     /**

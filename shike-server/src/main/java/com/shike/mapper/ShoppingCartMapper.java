@@ -5,6 +5,7 @@ import com.shike.constant.MessageConstant;
 import com.shike.dto.ShoppingCartDTO;
 import com.shike.entity.ShoppingCart;
 import com.shike.enumeration.OperationType;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Update;
@@ -25,7 +26,6 @@ public interface ShoppingCartMapper {
      * 更新购物车数量
      * @param shoppingCart
      */
-    @AutoFill(OperationType.UPDATE)
     @Update("update shopping_cart set number = #{number} where id = #{id}")
     void updateNumber(ShoppingCart shoppingCart);
 
@@ -36,4 +36,20 @@ public interface ShoppingCartMapper {
     @Insert("insert into shopping_cart (name, user_id, dish_id, setmeal_id, dish_flavor, number, amount, image, create_time) " +
             " values (#{name},#{userId},#{dishId},#{setmealId},#{dishFlavor},#{number},#{amount},#{image},#{createTime})")
     void insert(ShoppingCart shoppingCart);
+
+
+    /**
+     * 根据用户id删除购物车
+     * @param l
+     */
+
+    @Delete("delete from shopping_cart where user_id = #{l}")
+    void cleanById(Long l);
+
+    /**
+     * 根据主键删除购物车记录
+     * @param id
+     */
+    @Delete("delete from shopping_cart where id = #{id}")
+    void deleteById(Long id);
 }

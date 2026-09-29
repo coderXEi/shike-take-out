@@ -13,6 +13,7 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -43,6 +44,7 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
             //
             ShoppingCart cart = list.get(0);
             cart.setNumber(cart.getNumber() + 1);
+            cart.setCreateTime(LocalDateTime.now());
             // 更新number
             shoppingCartMapper.updateNumber(cart);
 
@@ -67,16 +69,50 @@ public class ShoppingCartServiceImpl implements ShoppingCartService {
                 shoppingCart.setImage(setmeal.getImage());
                 shoppingCart.setAmount(setmeal.getPrice());
                 shoppingCart.setNumber(1);
-
-
-
+                shoppingCart.setCreateTime(LocalDateTime.now());
             }
 
             shoppingCartMapper.insert(shoppingCart);
-
         }
 
         // 不存在 则插入购物车数据
 
+    }
+
+    @Override
+    public List<ShoppingCart> showShoppingCart() {
+        Long l = CurrentHolder.get();
+        ShoppingCart shoppingCart = ShoppingCart.builder().userId(l).build();
+        List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
+        return list != null ? list : java.util.Collections.emptyList();
+    }
+
+    @Override
+    public void clean() {
+        Long l = CurrentHolder.get();
+        shoppingCartMapper.cleanById(l);
+    }
+
+    @Override
+    public void subShoppingCart(ShoppingCartDTO shoppingCartDTO) {
+        // 构造查询条件：当前用户 + 菜品/套餐 + 口味
+        ShoppingCart shoppingCart = new ShoppingCart();
+        BeanUtils.copyProperties(shoppingCartDTO, shoppingCart);
+        shoppingCart.setUserId(CurrentHolder.get());
+
+        List<ShoppingCart> list = shoppingCartMapper.list(shoppingCart);
+        if (list == null || list.isEmpty()) {
+            // 购物车中没有该商品，无需减少
+            return;
+        }
+
+        ShoppingCart cart = list.get(0);
+        if (cart.getNumber() == null || cart.getNumber() <= 1) {
+            // 数量为 1，再减则删除该记录，避免出现 number = 0 的幽灵行
+            shoppingCartMapper.deleteById(cart.getId());
+        } else {
+            cart.setNumber(cart.getNumber() - 1);
+            shoppingCartMapper.updateNumber(cart);
+        }
     }
 }

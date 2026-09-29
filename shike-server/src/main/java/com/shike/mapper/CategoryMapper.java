@@ -40,4 +40,11 @@ public interface CategoryMapper {
 
 
     List<CategoryVO> get(Integer type);
+
+    /**
+     * 根据类型查询启用的分类列表
+     * @param type 1:菜品分类 2:套餐分类，为null时查询全部
+     * @return
+     */
+    List<Category> list(Integer type);
 }

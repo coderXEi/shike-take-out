@@ -34,7 +34,7 @@ public class UserController {
     JwtProperties jwtProperties;
 
 
-    @PostMapping
+    @PostMapping("/login")
     @NoAuth
     public Result<UserLoginVO> login(@RequestBody UserLoginDTO userLoginDTO) {
         log.info("微信登录接口:{}",userLoginDTO);
