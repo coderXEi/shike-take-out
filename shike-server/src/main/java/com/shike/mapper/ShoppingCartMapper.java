@@ -1,0 +1,39 @@
+package com.shike.mapper;
+
+import com.shike.anno.AutoFill;
+import com.shike.constant.MessageConstant;
+import com.shike.dto.ShoppingCartDTO;
+import com.shike.entity.ShoppingCart;
+import com.shike.enumeration.OperationType;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Update;
+
+import java.util.List;
+
+@Mapper
+public interface ShoppingCartMapper {
+
+    /**
+     * 动态条件查询购物车数据
+     *
+     */
+    List<ShoppingCart> list(ShoppingCart shoppingCart);
+
+
+    /**
+     * 更新购物车数量
+     * @param shoppingCart
+     */
+    @AutoFill(OperationType.UPDATE)
+    @Update("update shopping_cart set number = #{number} where id = #{id}")
+    void updateNumber(ShoppingCart shoppingCart);
+
+    /**
+     * 插入购物车数据
+     * @param shoppingCart
+     */
+    @Insert("insert into shopping_cart (name, user_id, dish_id, setmeal_id, dish_flavor, number, amount, image, create_time) " +
+            " values (#{name},#{userId},#{dishId},#{setmealId},#{dishFlavor},#{number},#{amount},#{image},#{createTime})")
+    void insert(ShoppingCart shoppingCart);
+}

@@ -1,6 +1,8 @@
 package com.shike.controller.admin;
 
 import com.shike.dto.SetmealDTO;
+import com.shike.dto.SetmealPageQueryDTO;
+import com.shike.result.PageResult;
 import com.shike.result.Result;
 import com.shike.service.SetmealService;
 import com.shike.vo.SetmealVO;
@@ -24,6 +26,19 @@ public class SetmealController {
 
     @Autowired
     private SetmealService setmealService;
+
+    /**
+     * 套餐分页查询
+     * @param setmealPageQueryDTO
+     * @return
+     */
+    @GetMapping("/page")
+    @ApiOperation("套餐分页查询")
+    public Result<PageResult> page(SetmealPageQueryDTO setmealPageQueryDTO) {
+        log.info("套餐分页查询:{}", setmealPageQueryDTO);
+        PageResult pageResult = setmealService.pageQuery(setmealPageQueryDTO);
+        return Result.success(pageResult);
+    }
 
     /**
      * 新增套餐
