@@ -1,6 +1,7 @@
 package com.shike.controller.admin;
 
 
+import com.shike.constant.DishCacheConstant;
 import com.shike.dto.DishDTO;
 import com.shike.dto.DishPageQueryDTO;
 import com.shike.result.PageResult;
@@ -11,9 +12,11 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/admin/dish")
@@ -23,12 +26,16 @@ public class DishController {
 
     @Autowired
     DishService dishService;
+    @Autowired
+    RedisTemplate redisTemplate;
 
     @PostMapping
     @ApiOperation("新增菜品")
     public Result save(@RequestBody DishDTO dishDTO) {
         log.info("新增菜品:{}",dishDTO);
-
+        dishService.saveWithFlavor(dishDTO);
+        // 清理该分类下的菜品列表缓存
+        redisTemplate.delete(DishCacheConstant.categoryListKey(dishDTO.getCategoryId()));
         return Result.success();
     }
 
@@ -48,7 +55,9 @@ public class DishController {
     public Result delete( @RequestParam List<Long> ids){
 
         log.info("要删除的菜品id :{}",ids);
+
         dishService.delete(ids);
+        cleanDishCache();
         return Result.success();
     }
 
@@ -56,7 +65,12 @@ public class DishController {
     @ApiOperation("根据id查询菜品")
     public Result<DishVO> findById(@PathVariable Long id){
         log.info("根据id查询菜品");
-        DishVO dishVO =  dishService.getByIdWithFlavor(id);
+        String key = DishCacheConstant.dishInfoKey(id);
+        DishVO dishVO = (DishVO) redisTemplate.opsForValue().get(key);
+        if (dishVO == null) {
+            dishVO = dishService.getByIdWithFlavor(id);
+            redisTemplate.opsForValue().set(key, dishVO);
+        }
         return Result.success(dishVO);
     }
 
@@ -67,7 +81,28 @@ public class DishController {
         log.info(" 接收到菜品信息:{}",dishDTO);
 
         dishService.updateWithFlavor(dishDTO);
+        cleanDishCache();
         return Result.success();
+    }
+
+    @PostMapping("/status/{status}")
+    @ApiOperation("菜品起售停售")
+    public Result startOrStop(@PathVariable Integer status, Long id){
+        log.info("菜品起售停售, id:{}, status:{}", id, status);
+
+        dishService.startOrStop(status, id);
+        cleanDishCache();
+        return Result.success();
+    }
+
+    /**
+     * 清理菜品相关缓存
+     */
+    private void cleanDishCache() {
+        Set keys = redisTemplate.keys(DishCacheConstant.DISH_CACHE_PREFIX + "*");
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);
+        }
     }
 
 }

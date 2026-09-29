@@ -31,7 +31,12 @@ public class UserServiceImpl implements UserService {
     @Override
     public User wxlogin(UserLoginDTO userLoginDTO) {
         // 调用微信服务器接口 获取openid
-        String s = getOpenId(userLoginDTO);
+        Map<String, String> map = new HashMap<String, String>();
+        map.put("appid",weChatProperties.getAppid());
+        map.put("secret",weChatProperties.getSecret());
+        map.put("js_code",userLoginDTO.getCode());
+        map.put("grant_type","authorization_code");
+        String s = HttpClientUtil.doGet(wx_login_url, map);
         // 解析json数据
         JSONObject jsonObject = JSON.parseObject(s);
         String openid = jsonObject.getString("openid");
@@ -52,16 +57,6 @@ public class UserServiceImpl implements UserService {
         // code 是否为空，空则异常 失败
         // 判断当前code是否在用户表 若不再 则为新用户 新增新用户
 
-        return null;
-    }
-
-    private String getOpenId(UserLoginDTO userLoginDTO) {
-        Map<String, String> map = new HashMap<String, String>();
-        map.put("appid",weChatProperties.getAppid());
-        map.put("secret",weChatProperties.getSecret());
-        map.put("js_code", userLoginDTO.getCode());
-        map.put("grant_type","authorization_code");
-        String s = HttpClientUtil.doGet(wx_login_url, map);
-        return s;
+        return user;
     }
 }

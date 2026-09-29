@@ -2,6 +2,7 @@ package com.shike.service;
 
 import com.shike.dto.CategoryDTO;
 import com.shike.dto.CategoryPageQueryDTO;
+import com.shike.entity.Category;
 import com.shike.result.PageResult;
 import com.shike.vo.CategoryVO;
 
@@ -45,4 +46,12 @@ public interface CategoryService {
      * @return
      */
     List<CategoryVO> getCategory(Integer type);
+
+
+    /**
+     * 根据类型获取分类
+     * @param type
+     * @return
+     */
+    List<Category> list(Integer type);
 }

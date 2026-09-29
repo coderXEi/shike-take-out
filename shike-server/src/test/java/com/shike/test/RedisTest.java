@@ -4,17 +4,18 @@ package com.shike.test;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.HashOperations;
-import org.springframework.data.redis.core.ListOperations;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.*;
 
 import java.util.Set;
 
+@SpringBootTest
 public class RedisTest {
 
     @Autowired
     private RedisTemplate<String,Object> redisTemplate;
+
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
 
     @Test
     public void testRedisTemplate() {
@@ -31,9 +32,11 @@ public class RedisTest {
 
 //        redisTemplate.opsForValue().set("city","北京");
 
-        ValueOperations valueOperations = redisTemplate.opsForValue();
-        valueOperations.set("city", "北京 ");
-        System.out.println(valueOperations.get("city"));
+
+        ValueOperations<String,String> valueOperations = stringRedisTemplate.opsForValue();
+        valueOperations.set("count", "100");
+        System.out.println(valueOperations.get("count"));
+        valueOperations.increment("count", 1);
     }
 
     @Test
@@ -73,6 +76,13 @@ public class RedisTest {
         Set<String> keys = redisTemplate.keys("*");
 
         redisTemplate.hasKey("*");
+    }
+
+
+    @Test
+    public void testIncrement(){
+
+        // 测试increment
     }
 
 

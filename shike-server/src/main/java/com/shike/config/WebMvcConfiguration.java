@@ -1,6 +1,7 @@
 package com.shike.config;
 
 import com.shike.interceptor.JwtTokenAdminInterceptor;
+import com.shike.interceptor.JwtTokenUserInterceptor;
 import com.shike.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,9 @@ import java.util.List;
 public class WebMvcConfiguration extends WebMvcConfigurationSupport {
 
     @Autowired
+    private JwtTokenUserInterceptor jwtTokenUserInterceptor;
+
+    @Autowired
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
 
     /**
@@ -38,11 +42,16 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
     @Override
     protected void addInterceptors(InterceptorRegistry registry) {
         log.info("开始注册自定义拦截器...");
-        registry.addInterceptor(jwtTokenAdminInterceptor)
+        registry.addInterceptor(jwtTokenUserInterceptor)
                 // 将拦截器注册在admin/下
                 .addPathPatterns("/admin/**")
                 // 登录接口排除
                 .excludePathPatterns("/admin/employee/login");
+
+        registry.addInterceptor(jwtTokenUserInterceptor)
+                // 将拦截器注册在user下
+                .addPathPatterns("/user/**")
+                .excludePathPatterns("/user/user/login").excludePathPatterns("/user/shop/status");
     }
 
     /**
@@ -96,6 +105,7 @@ public class WebMvcConfiguration extends WebMvcConfigurationSupport {
     }
 
     /**
+     * Web 全局的json格式化器，用于Controller入参和出参的 json - java对象 序列化与反序列化
      * 添加消息转换器  spring mvc提供
      *
      * @param converters 消息转换器列表

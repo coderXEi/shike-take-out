@@ -4,8 +4,9 @@
 <mapper namespace="com.shike.mapper.DishMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        insert into dish (name,category_id,price,image,description,status,create_time,create_user,update_time,update_user)
-        values (#{name},#{categoryId},#{price},#{image},#{description},#{status})
+        insert into dish
+        (name,category_id,price,image,description,status,create_time,create_user,update_time,update_user)
+        values (#{name},#{categoryId},#{price},#{image},#{description},#{status},#{createTime},#{createUser},#{updateTime},#{updateUser})
     </insert>
 
     <select id="pageQuery" resultType="com.shike.vo.DishVO">
@@ -50,9 +51,27 @@
             <if test="image != null">image = #{image},</if>
             <if test="description != null">description = #{description},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateUser != null">update_user = #{updateUser},</if>
         </set>
         where id = #{id}
     </update>
+
+    <select id="list" resultType="Dish" parameterType="Dish">
+        select * from dish
+        <where>
+            <if test="name != null">
+                and name like concat('%',#{name},'%')
+            </if>
+            <if test="categoryId != null">
+                and category_id = #{categoryId}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
 
 </mapper>
 
