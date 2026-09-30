@@ -12,7 +12,7 @@
                 #{estimatedDeliveryTime}, #{deliveryStatus}, #{packAmount}, #{tablewareNumber}, #{tablewareStatus})
     </insert>
 
-    <update id="update" parameterType="com.sky.entity.Orders">
+    <update id="update" parameterType="com.shike.entity.Orders">
         update orders
         <set>
             <if test="cancelReason != null and cancelReason!='' ">
@@ -42,5 +42,40 @@
         </set>
         where id = #{id}
     </update>
+
+
+    <select id="pageQuery" resultType="com.shike.entity.Orders">
+        select * from orders
+        <where>
+            <if test="userId != null">
+                and user_id = #{userId}
+            </if>
+            <if test="number != null and number != ''">
+                and number = #{number}
+            </if>
+            <if test="phone != null and phone != ''">
+                and phone = #{phone}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="beginTime != null">
+                and order_time &gt;= #{beginTime}
+            </if>
+            <if test="endTime != null">
+                and order_time &lt;= #{endTime}
+            </if>
+        </where>
+        order by order_time desc
+    </select>
+
+    <select id="statistic"  resultType="com.shike.vo.OrderStatisticsVO">
+        select
+            count(case when status = 2 then 1 end) as toBeConfirmed,
+            count(case when status = 3 then 1 end) as confirmed,
+            count(case when status = 4 then 1 end) as deliveryInProgress
+        from orders
+
+    </select>
 
 </mapper>

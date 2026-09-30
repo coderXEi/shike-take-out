@@ -34,6 +34,11 @@ public class JwtTokenUserInterceptor implements HandlerInterceptor {
      * @throws Exception
      */
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+
+        java.util.Collections.list(request.getHeaderNames())
+                .forEach(name -> log.info("header {} = {}", name, request.getHeader(name)));
+
+
         //判断当前拦截到的是Controller的user接口
         if (!(handler instanceof HandlerMethod)) {
             //当前拦截到的不是动态方法，直接放行
