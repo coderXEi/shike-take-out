@@ -43,6 +43,6 @@ public class ShopController {
 
         Integer shopStatus = shopService.getStatus();
         log.info("获取店铺的营业状态{}", shopStatus == null ? "未知" : (shopStatus == 1 ? "营业" : "打烊"));
-        return Result.success();
+        return Result.success(shopStatus);
     }
 }

@@ -11,11 +11,13 @@ import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController("adminOrderController")
 @Slf4j
 @Api(tags = "管理端订单管理接口")
+@RequestMapping("/admin/order")
 public class OrderController {
 
     @Autowired
@@ -36,6 +38,6 @@ public class OrderController {
     public Result<OrderStatisticsVO> statistics() {
         log.info("分类订单数量统计");
         OrderStatisticsVO orderStatisticsVO =  orderService.statistic();
-        return Result.success();
+        return Result.success(orderStatisticsVO);
     }
 }
