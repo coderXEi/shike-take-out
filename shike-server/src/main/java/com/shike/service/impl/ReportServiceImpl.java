@@ -1,10 +1,13 @@
 package com.shike.service.impl;
 
+import com.shike.dto.GoodsSalesDTO;
 import com.shike.entity.Orders;
 import com.shike.mapper.OrderMapper;
 import com.shike.mapper.UserMapper;
 import com.shike.service.OrderService;
 import com.shike.service.ReportService;
+import com.shike.vo.OrderReportVO;
+import com.shike.vo.SalesTop10ReportVO;
 import com.shike.vo.TurnoverReportVO;
 import com.shike.vo.UserReportVO;
 import org.apache.commons.lang3.StringUtils;
@@ -22,6 +25,9 @@ import java.util.Map;
 @Service
 
 public class ReportServiceImpl implements ReportService {
+
+    /** 销量排行榜取前 N 名 */
+    private static final int TOP_N = 10;
 
     @Autowired
     private OrderService orderService;
@@ -93,5 +99,90 @@ public class ReportServiceImpl implements ReportService {
                 .totalUserList(StringUtils.join(totalUserList, ","))
                 .newUserList(StringUtils.join(newUserList, ","))
                 .build();
+    }
+
+    @Override
+    public OrderReportVO getOrderStatistics(LocalDate begin, LocalDate end) {
+        List<LocalDate> dateList = buildDateList(begin, end);
+
+        // 每日订单总数、每日有效订单数
+        List<Integer> orderCountList = new ArrayList<>(dateList.size());
+        List<Integer> validOrderCountList = new ArrayList<>(dateList.size());
+
+        // 区间汇总：订单总数、有效订单数
+        int totalOrderCount = 0;
+        int validOrderCount = 0;
+
+        for (LocalDate date : dateList) {
+            LocalDateTime beginTime = LocalDateTime.of(date, LocalTime.MIN);
+            LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
+
+            int dayTotal = getOrderCount(beginTime, endTime, null);
+            int dayValid = getOrderCount(beginTime, endTime, Orders.COMPLETED);
+
+            orderCountList.add(dayTotal);
+            validOrderCountList.add(dayValid);
+
+            totalOrderCount += dayTotal;
+            validOrderCount += dayValid;
+        }
+
+        // 订单完成率 = 有效订单数 / 订单总数，避免除零
+        double orderCompletionRate = totalOrderCount == 0
+                ? 0.0
+                : validOrderCount * 1.0 / totalOrderCount;
+
+        return OrderReportVO.builder()
+                .dateList(StringUtils.join(dateList, ","))
+                .orderCountList(StringUtils.join(orderCountList, ","))
+                .validOrderCountList(StringUtils.join(validOrderCountList, ","))
+                .totalOrderCount(totalOrderCount)
+                .validOrderCount(validOrderCount)
+                .orderCompletionRate(orderCompletionRate)
+                .build();
+    }
+
+    @Override
+    public SalesTop10ReportVO getSalesTop10(LocalDate begin, LocalDate end) {
+        LocalDateTime beginTime = LocalDateTime.of(begin, LocalTime.MIN);
+        // 用「次日零点」作为开区间上界，避免 LocalTime.MAX 纳秒精度带来的边界丢失
+        LocalDateTime endTime = LocalDateTime.of(end.plusDays(1), LocalTime.MIN);
+
+        List<GoodsSalesDTO> salesList =
+                orderMapper.getSalesTop10(beginTime, endTime, Orders.COMPLETED, TOP_N);
+
+        List<String> nameList = new ArrayList<>(salesList.size());
+        List<Integer> numberList = new ArrayList<>(salesList.size());
+        for (GoodsSalesDTO goodsSales : salesList) {
+            nameList.add(goodsSales.getName());
+            numberList.add(goodsSales.getNumber());
+        }
+
+        return SalesTop10ReportVO.builder()
+                .nameList(StringUtils.join(nameList, ","))
+                .numberList(StringUtils.join(numberList, ","))
+                .build();
+    }
+
+    /**
+     * 构建 [begin, end] 闭区间内的每一天（含首尾）。
+     * 若 end 早于 begin，则返回空列表，避免死循环。
+     */
+    private List<LocalDate> buildDateList(LocalDate begin, LocalDate end) {
+        List<LocalDate> dateList = new ArrayList<>();
+        for (LocalDate date = begin; !date.isAfter(end); date = date.plusDays(1)) {
+            dateList.add(date);
+        }
+        return dateList;
+    }
+
+    private Integer getOrderCount(LocalDateTime beginTime, LocalDateTime endTime, Integer status) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("beginTime", beginTime);
+        map.put("endTime", endTime);
+        map.put("status", status);
+
+        Integer count = orderMapper.countByMap(map);
+        return count == null ? 0 : count;
     }
 }

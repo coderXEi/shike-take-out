@@ -93,4 +93,38 @@
         </where>
     </select>
 
+    <select id="countByMap" resultType="java.lang.Integer">
+        select count(id) from shike_take_out.orders
+        <where>
+            <if test="beginTime != null">
+                and order_time >= #{beginTime}
+            </if>
+            <if test="endTime != null">
+                and order_time &lt;= #{endTime}
+            </if>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <!--
+        销量 Top N：关联 order_detail，按商品名称聚合销量。
+        用 INNER JOIN 而非 LEFT JOIN，只统计确实有订单的商品。
+        时间区间采用 [beginTime, endTime) 半开区间，避免边界重复/丢失。
+        number 可能为 null（老数据），用 ifnull 兑底为 0。
+    -->
+    <select id="getSalesTop10" resultType="com.shike.dto.GoodsSalesDTO">
+        select od.name                       as name,
+               sum(ifnull(od.number, 0))     as number
+        from shike_take_out.order_detail od
+                 inner join shike_take_out.orders o on od.order_id = o.id
+        where o.order_time &gt;= #{beginTime}
+          and o.order_time &lt; #{endTime}
+          and o.status = #{status}
+        group by od.name
+        order by number desc
+        limit #{limit}
+    </select>
+
 </mapper>

@@ -83,4 +83,26 @@ public interface OrderMapper {
      * @return
      */
     Double sumByMap(Map<String, Object> map);
+
+
+    /**
+     * 按条件统计订单数据
+     * @param map
+     * @return
+     */
+    Integer countByMap(Map<String, Object> map);
+
+    /**
+     * 统计指定时间区间内销量排名前 N 的商品
+     *
+     * @param beginTime 开始时间（含）
+     * @param endTime   结束时间（不含）
+     * @param status    订单状态（统计有效订单传 Orders.COMPLETED）
+     * @param limit     取前多少名
+     * @return 商品名称及销量，按销量降序
+     */
+    List<GoodsSalesDTO> getSalesTop10(@Param("beginTime") LocalDateTime beginTime,
+                                      @Param("endTime") LocalDateTime endTime,
+                                      @Param("status") Integer status,
+                                      @Param("limit") Integer limit);
 }
