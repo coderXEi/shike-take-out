@@ -6,14 +6,21 @@ import com.shike.mapper.OrderMapper;
 import com.shike.mapper.UserMapper;
 import com.shike.service.OrderService;
 import com.shike.service.ReportService;
-import com.shike.vo.OrderReportVO;
-import com.shike.vo.SalesTop10ReportVO;
-import com.shike.vo.TurnoverReportVO;
-import com.shike.vo.UserReportVO;
+import com.shike.service.WorkspaceService;
+import com.shike.vo.*;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletResponse;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -23,7 +30,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-
+@Slf4j
 public class ReportServiceImpl implements ReportService {
 
     /** 销量排行榜取前 N 名 */
@@ -35,6 +42,9 @@ public class ReportServiceImpl implements ReportService {
     private OrderMapper orderMapper;
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private WorkspaceService workspaceService;
 
 
     @Override
@@ -162,6 +172,69 @@ public class ReportServiceImpl implements ReportService {
                 .nameList(StringUtils.join(nameList, ","))
                 .numberList(StringUtils.join(numberList, ","))
                 .build();
+    }
+
+    @Override
+    public void exportData(HttpServletResponse response) {
+            // 查询数据库 获取数据
+        LocalDate pastDay = LocalDate.now().minusDays(1);
+        LocalDate past30days = pastDay.minusDays(30);
+
+        // 拿到数据
+        BusinessDataVO businessData = workspaceService.getBusinessData(LocalDateTime.of(past30days, LocalTime.MIN), LocalDateTime.of(pastDay, LocalTime.MAX));
+
+        // 获取模板  写入数据
+        InputStream in = this.getClass().getClassLoader().getResourceAsStream("template/info.xlsx");
+        // 通过输出流 返回该excel
+        try{
+            XSSFWorkbook workbook = new XSSFWorkbook(in);
+
+            // 填充数据
+            XSSFSheet sheet = workbook.getSheet("sheet1");
+            sheet.getRow(1).getCell(1).setCellValue("时间:"+ past30days+"到"+ pastDay);
+
+            // 获得第四行
+            XSSFRow row = sheet.getRow(3);
+            row.getCell(2).setCellValue(businessData.getTurnover());
+            row.getCell(4).setCellValue(businessData.getOrderCompletionRate());
+            row.getCell(6).setCellValue(businessData.getNewUsers());
+
+            // 获得第五行
+            XSSFRow row5 = sheet.getRow(4);
+
+            row5.getCell(2).setCellValue(businessData.getValidOrderCount());
+            row5.getCell(4).setCellValue(businessData.getUnitPrice());
+
+
+            // 填充每一天的数据
+            for (int i =0;i<30;i++) {
+                LocalDate date = past30days.plusDays(i);
+
+                BusinessDataVO businessData1 = workspaceService.getBusinessData(LocalDateTime.of(date, LocalTime.MIN), LocalDateTime.of(date, LocalTime.MAX));
+                // 拿到行  拿到单元格
+                row = sheet.getRow(7 + i);
+                row.getCell(1).setCellValue(date.toString());
+                row.getCell(2).setCellValue(businessData1.getTurnover());
+                row.getCell(3).setCellValue(businessData1.getValidOrderCount());
+                row.getCell(4).setCellValue(businessData1.getOrderCompletionRate());
+                row.getCell(5).setCellValue(businessData1.getUnitPrice());
+                row.getCell(6).setCellValue(businessData1.getNewUsers());
+            }
+
+            ServletOutputStream outputStream = response.getOutputStream();
+
+            workbook.write(outputStream);
+
+            // 关闭资源
+            outputStream.close();
+            workbook.close();
+
+
+            in.close();
+        } catch (IOException e) {
+            log.error(String.valueOf(e));
+        }
+
     }
 
     /**

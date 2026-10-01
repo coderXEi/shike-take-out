@@ -5,6 +5,7 @@ import com.shike.vo.SalesTop10ReportVO;
 import com.shike.vo.TurnoverReportVO;
 import com.shike.vo.UserReportVO;
 
+import javax.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 
 public interface ReportService {
@@ -44,4 +45,11 @@ public interface ReportService {
      * @return 商品名称与销量，逗号分隔
      */
     SalesTop10ReportVO getSalesTop10(LocalDate begin, LocalDate end);
+
+
+    /**
+     * 导出报表
+     * @param response
+     */
+    void exportData(HttpServletResponse response);
 }

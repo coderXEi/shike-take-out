@@ -79,7 +79,7 @@
     </select>
 
     <select id="sumByMap" resultType="java.lang.Double">
-        select count(amount) from shike_take_out.orders
+        select sum(amount) from shike_take_out.orders
         <where>
             <if test="beginTime != null">
                 and order_time >= #{beginTime}

@@ -48,8 +48,10 @@ public class WorkspaceServiceImpl implements WorkspaceService {
          */
 
         Map map = new HashMap();
-        map.put("begin",begin);
-        map.put("end",end);
+        // 注意：mapper 中读取的键名是 beginTime / endTime，若写成 begin/end
+        // 会导致时间过滤条件被 <if> 静默跳过，从而每天都统计全量数据。
+        map.put("beginTime",begin);
+        map.put("endTime",end);
 
         //查询总订单数
         Integer totalOrderCount = orderMapper.countByMap(map);
