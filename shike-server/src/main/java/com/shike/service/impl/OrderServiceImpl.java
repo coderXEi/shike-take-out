@@ -1,5 +1,6 @@
 package com.shike.service.impl;
 
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
@@ -20,6 +21,7 @@ import com.shike.vo.OrderPaymentVO;
 import com.shike.vo.OrderStatisticsVO;
 import com.shike.vo.OrderSubmitVO;
 import com.shike.vo.OrderVO;
+import com.shike.websocket.WebSocketServer;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -28,8 +30,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -53,6 +54,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private WeChatPayUtil weChatPayUtil;
+    @Autowired
+    private WebSocketServer webSocketServer;
 
 
     @Override
@@ -306,6 +309,23 @@ public class OrderServiceImpl implements OrderService {
          return  orderMapper.statistic();
 
 
+    }
+
+    @Override
+    public void reminder(Long id) {
+        Orders order = orderMapper.getById(id);
+        // 订单是否存在
+        if(order == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("type",2);
+        map.put("orderId",id);
+        map.put("content","客户催单，订单号:" +order.getId());
+
+        // ws 推送催单
+        webSocketServer.sendToAllClient(JSON.toJSONString(map));
     }
 
     private List<OrderVO> getOrderVOList(Page<Orders> page) {
