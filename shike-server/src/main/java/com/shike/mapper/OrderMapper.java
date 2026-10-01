@@ -9,6 +9,8 @@ import com.shike.vo.OrderVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -64,4 +66,13 @@ public interface OrderMapper {
      * @return
      */
     OrderStatisticsVO statistic();
+
+    /**
+     * 定时处理订单状态
+     * @param status
+     * @param time
+     * @return
+     */
+    @Select("select * from orders where status = #{status} and order_time < #{time}")
+    List<Orders> getByStatusAndOrderTime(Integer status, LocalDateTime time);
 }
