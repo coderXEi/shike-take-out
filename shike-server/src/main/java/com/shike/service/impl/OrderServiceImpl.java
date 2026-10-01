@@ -62,6 +62,8 @@ public class OrderServiceImpl implements OrderService {
     @Transactional
     public OrderSubmitVO submit(OrdersSubmitDTO dto) {
 
+
+
         // 处理业务异常  收货地，购物车数据为空
         AddressBook addressBook = addressBookMapper.getById(dto.getAddressBookId());
         if (addressBook == null) {
@@ -133,20 +135,36 @@ public class OrderServiceImpl implements OrderService {
         Long userId = CurrentHolder.get();
         User user = userMapper.getById(userId);
 
-        //调用微信支付接口，生成预支付交易单
-        JSONObject jsonObject = weChatPayUtil.pay(
-                ordersPaymentDTO.getOrderNumber(), //商户订单号
-                new BigDecimal(0.01), //支付金额，单位 元
-                "苍穹外卖订单", //商品描述
-                user.getOpenid() //微信用户的openid
-        );
+        // ==================== 原【真实调用微信支付SDK】代码，暂注释掉，勿删除 ====================
+        // //调用微信支付接口，生成预支付交易单
+        // JSONObject jsonObject = weChatPayUtil.pay(
+        //         ordersPaymentDTO.getOrderNumber(), //商户订单号
+        //         new BigDecimal(0.01), //支付金额，单位 元
+        //         "苍穹外卖订单", //商品描述
+        //         user.getOpenid() //微信用户的openid
+        // );
+        //
+        // if (jsonObject.getString("code") != null && jsonObject.getString("code").equals("ORDERPAID")) {
+        //     throw new OrderBusinessException("该订单已支付");
+        // }
+        //
+        // OrderPaymentVO vo = jsonObject.toJavaObject(OrderPaymentVO.class);
+        // vo.setPackageStr(jsonObject.getString("package"));
+        //
+        // return vo;
+        // ==================== 原代码结束 ====================
 
-        if (jsonObject.getString("code") != null && jsonObject.getString("code").equals("ORDERPAID")) {
-            throw new OrderBusinessException("该订单已支付");
-        }
+        // ==================== 模拟支付：跳过微信SDK，直接执行支付成功逻辑（等价于 notify 回调） ====================
+        // 直接调用支付成功业务处理，效果等同于微信支付成功回调 notify/paySuccess
+        paySuccess(ordersPaymentDTO.getOrderNumber());
 
-        OrderPaymentVO vo = jsonObject.toJavaObject(OrderPaymentVO.class);
-        vo.setPackageStr(jsonObject.getString("package"));
+        // 构造伪支付参数返回给前端，保持前端支付流程不报错
+        OrderPaymentVO vo = new OrderPaymentVO();
+        vo.setNonceStr("mock_nonce_str");
+        vo.setTimeStamp(String.valueOf(System.currentTimeMillis() / 1000));
+        vo.setSignType("RSA");
+        vo.setPackageStr("prepay_id=mock_prepay_id");
+        vo.setPaySign("mock_pay_sign");
 
         return vo;
     }
@@ -170,6 +188,14 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderMapper.update(orders);
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("type",1);
+        map.put("orderId",111);
+        map.put("content","订单来了");
+        String jsonString = JSON.toJSONString(map);
+
+        webSocketServer.sendToAllClient(jsonString);
     }
 
     @Override
@@ -236,13 +262,17 @@ public class OrderServiceImpl implements OrderService {
 
         // 执行退款
         if(ordersDB.getStatus() == Orders.TO_BE_CONFIRMED) {
-            // 微信接口退款
-            weChatPayUtil.refund(
-                    ordersDB.getNumber(),
-                    ordersDB.getNumber(),
-                    new BigDecimal(0.01),
-                    new BigDecimal(0.01)
-            );
+            // ==================== 原【真实调用微信退款SDK】代码，暂注释掉，勿删除 ====================
+            // // 微信接口退款
+            // weChatPayUtil.refund(
+            //         ordersDB.getNumber(),
+            //         ordersDB.getNumber(),
+            //         new BigDecimal(0.01),
+            //         new BigDecimal(0.01)
+            // );
+            // ==================== 原代码结束 ====================
+
+            // 模拟退款：跳过微信SDK，直接标记为已退款
             orders.setPayStatus(Orders.REFUND);
         }
 

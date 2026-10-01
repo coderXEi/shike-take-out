@@ -8,4 +8,18 @@
         values(#{openid},#{name},#{phone},#{sex},#{idNumber},#{avatar},#{createTime})
 
     </insert>
+
+    <select id="countByMap" resultType="java.lang.Integer">
+        select count(id) from shike_take_out.user
+        <where>
+            <if test="beginTime !=null">
+                and create_time >= #{beginTime}
+            </if>
+
+            <if test="endTime !=null">
+                and create_time &lt;= #{endTime}
+            </if>
+
+        </where>
+    </select>
 </mapper>

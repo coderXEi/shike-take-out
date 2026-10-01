@@ -19,7 +19,7 @@ public class WebSocketTask {
     /**
      * 通过WebSocket每隔5秒向客户端发送消息
      */
-    @Scheduled(cron = "0/5 * * * * ?")
+//    @Scheduled(cron = "0/5 * * * * ?")
     public void sendMessageToClient() {
 
         Map<String, Object> map = new HashMap<>();

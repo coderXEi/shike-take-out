@@ -25,7 +25,7 @@ public class OrderTask {
      * 处理超时订单方法
      */
     // 每分钟一次
-    @Scheduled(cron = "0 * * * * ?")
+//    @Scheduled(cron = "0 * * * * ?")
     public void processTimeoutOrder() {
         log.info("定时处理超时订单:{}", LocalDateTime.now());
         // 查找指定状态 且时间在过期前十五分钟以前  然后设置其状态

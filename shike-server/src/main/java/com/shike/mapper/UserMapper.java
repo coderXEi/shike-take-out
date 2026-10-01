@@ -4,6 +4,8 @@ package com.shike.mapper;
 import com.shike.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import java.time.LocalDate;
+import java.util.Map;
 
 @Mapper
 public interface UserMapper {
@@ -25,4 +27,12 @@ public interface UserMapper {
      * @return 影响行数
      */
     int insert(User user);
+
+    /**
+     * 统计用户
+     * @param begin
+     * @param end
+     * @return
+     */
+    Integer countByMap(Map<String,Object> map);
 }

@@ -75,4 +75,12 @@ public interface OrderMapper {
      */
     @Select("select * from orders where status = #{status} and order_time < #{time}")
     List<Orders> getByStatusAndOrderTime(Integer status, LocalDateTime time);
+
+
+    /**
+     * 计算当天的营业额
+     * @param map
+     * @return
+     */
+    Double sumByMap(Map<String, Object> map);
 }
