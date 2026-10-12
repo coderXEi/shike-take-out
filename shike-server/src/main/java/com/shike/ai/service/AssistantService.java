@@ -3,8 +3,6 @@ package com.shike.ai.service;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.spring.AiService;
 
-import java.util.List;
-
 /**
  * 商家端智能客服服务。
  *
@@ -21,12 +19,4 @@ public interface AssistantService {
     String chat(String userMessage);
 
 
-    @SystemMessage(fromResource = "system-prompt.txt")
-    Report chatForReport(String userMessage);
-
-
-    @SystemMessage("你是志愿填报的老师，你只负责志愿填报的任务，用户的其他任务不予回答")
-    String chatWithFlux(String userMessage);
-    // record 关键字， 以写函数的形式 来创建一个类
-    record Report(String name, List<String> suggestionList){};
 }

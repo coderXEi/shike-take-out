@@ -30,9 +30,13 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(prefix = "shike.rag", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class RagServiceImpl implements RagService {
 
+    // 嵌入模型
     private final EmbeddingModel embeddingModel;
+    // 嵌入存储
     private final EmbeddingStore<TextSegment> embeddingStore;
+    // 召回
     private final EmbeddingStoreIngestor embeddingStoreIngestor;
+    // 配置获取
     private final RagProperties ragProperties;
 
     @Override
@@ -46,10 +50,11 @@ public class RagServiceImpl implements RagService {
             log.warn("RAG 入库文本为空，已跳过");
             return 0;
         }
-
+        // 元信息
         Metadata documentMetadata = metadata == null || metadata.isEmpty()
                 ? new Metadata()
                 : new Metadata(metadata);
+        // Document = Metadata + text
         Document document = Document.from(text, documentMetadata);
 
         // 切分 + 向量化 + 写入 Qdrant
