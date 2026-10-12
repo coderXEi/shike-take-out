@@ -5,7 +5,7 @@ import com.shike.vo.SalesTop10ReportVO;
 import com.shike.vo.TurnoverReportVO;
 import com.shike.vo.UserReportVO;
 
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDate;
 
 public interface ReportService {

@@ -5,8 +5,8 @@ import org.springframework.context.annotation.ConditionContext;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.web.context.WebApplicationContext;
 
-import javax.servlet.ServletContext;
-import javax.websocket.server.ServerContainer;
+import jakarta.servlet.ServletContext;
+import jakarta.websocket.server.ServerContainer;
 
 /**
  * 判断当前运行环境是否存在真实的 {@link ServerContainer}（即运行在内嵌
@@ -16,7 +16,7 @@ import javax.websocket.server.ServerContainer;
 public class OnServerContainerAvailableCondition implements Condition {
 
     private static final String SERVER_CONTAINER_ATTRIBUTE =
-            "javax.websocket.server.ServerContainer";
+            "jakarta.websocket.server.ServerContainer";
 
     @Override
     public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {

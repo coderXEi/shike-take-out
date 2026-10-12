@@ -3,8 +3,8 @@ package com.shike.controller.admin;
 import com.shike.constant.MessageConstant;
 import com.shike.result.Result;
 import com.shike.utils.AliOssUtil;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,14 +21,14 @@ import java.util.UUID;
 @Slf4j
 @RequestMapping("/admin/common")
 @RestController
-@Api(tags = "公共接口服务")
+@Tag(name = "公共接口服务")
 public class CommonController {
 
     @Autowired
     private AliOssUtil aliOssUtil;
 
     @PostMapping("/upload")
-    @ApiOperation("文件上传接口")
+    @Operation(summary = "文件上传接口")
     public Result<String> fileUpload(MultipartFile file) {
         log.info("文件上传{}",file);
         // 调用aliyun oss 上传该文件

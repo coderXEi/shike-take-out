@@ -6,6 +6,7 @@ import com.shike.service.ShopService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.SerializationException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -25,7 +26,15 @@ public class ShopServiceImpl implements ShopService {
     @Override
     public Integer getStatus() {
         // 1. 先查缓存
-        Integer status = (Integer) redisTemplate.opsForValue().get(KEY);
+        Integer status = null;
+        try {
+            status = (Integer) redisTemplate.opsForValue().get(KEY);
+        } catch (SerializationException e) {
+            // 历史数据可能是 JDK 序列化格式，与当前 JSON 序列化器不兼容，
+            // 直接删除脏数据并回源数据库，避免接口 500
+            log.warn("店铺状态缓存反序列化失败，删除并回源数据库: {}", e.getMessage());
+            redisTemplate.delete(KEY);
+        }
         if (status != null) {
             return status;
         }

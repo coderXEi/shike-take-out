@@ -35,4 +35,24 @@
         order by sort asc, create_time desc
     </select>
 
+
+    <select id="selectIdByName" resultType="java.lang.Long">
+        select id from category where name = #{name}
+    </select>
+
+    <select id="selectByName" resultType="com.shike.entity.Category">
+        select * from category where name = #{name}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        insert into category (type, name, sort, status, create_time, update_time, create_user, update_user)
+        values (#{type}, #{name}, #{sort}, #{status}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})
+    </insert>
+
+    <update id="updateStatusById">
+        update category
+        set status = #{status}, update_time = now()
+        where id = #{id}
+    </update>
+
 </mapper>

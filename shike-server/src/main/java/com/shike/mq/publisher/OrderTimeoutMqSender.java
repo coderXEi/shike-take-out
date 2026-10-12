@@ -1,7 +1,8 @@
-package com.shike.mq;
+package com.shike.mq.publisher;
 
 import com.shike.constant.MqOrderConstant;
 import com.shike.dto.event.OrderCreatedEvent;
+import com.shike.mq.DelayMessageProcessor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
@@ -46,12 +47,12 @@ public class OrderTimeoutMqSender {
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOrderCreated(OrderCreatedEvent event) {
-        if (event == null || event.getOrderId() == null) {
+        if (event == null || event.getOrderNumber() == null || event.getOrderNumber().isEmpty()) {
             log.warn("[订单超时消息] 收到无效的订单创建事件，忽略：{}", event);
             return;
         }
         // 下单后从阶梯第 1 段开始
-        sendDelayMessage(event.getOrderId(), 1);
+        sendDelayMessage(event.getOrderNumber(), 1);
     }
 
     /**
@@ -60,24 +61,21 @@ public class OrderTimeoutMqSender {
      * <p>下单（{@code step = 1}）与消费者续发（{@code step = 上一段 + 1}）共用此方法，
      * 保证两处发送逻辑（交换机、routingKey、TTL、消息头）完全一致。
      *
-     * <p><b>传参约定：</b>{@code step} 为「接下来要等待的段号」，从 1 开始，最大为
+     * <p><b>传参约定：</b>消息体携带的是订单业务编号 {@code orders.number}（而非自增主键 id）；
+     * {@code step} 为「接下来要等待的段号」，从 1 开始，最大为
      * {@code MqOrderConstant.ORDER_TIMEOUT_LADDER.size()}。消费者收到第 N 段到期的消息后，
-     * 调用 {@code sendDelayMessage(orderId, N + 1)} 即可续上下一段。
+     * 调用 {@code sendDelayMessage(orderNumber, N + 1)} 即可续上下一段。
      * 若 {@code step} 超出阶梯范围，说明已到阶梯末尾，<b>不再发送</b>并返回 {@code false}，
      * 由调用方决定是否取消订单。
      *
-     * @param orderId 订单 id（消息体）
-     * @param step    要发送的段号，从 1 开始
+     * @param orderNumber 订单号（消息体，订单唯一业务标识）
+     * @param step        要发送的段号，从 1 开始
      * @return true 表示该段延时消息已成功投递；false 表示已到阶梯末尾或发送失败
      */
-    public boolean sendDelayMessage(Long orderId, int step) {
-        if (orderId == null) {
-            log.warn("[订单超时消息] orderId 为空，忽略。step={}", step);
-            return false;
-        }
+    public boolean sendDelayMessage(String orderNumber, int step) {
         if (step < 1 || step > MqOrderConstant.ORDER_TIMEOUT_LADDER.size()) {
-            log.warn("[订单超时消息] 段号超出阶梯范围，不发送。orderId={}, step={}, 总段数={}",
-                    orderId, step, MqOrderConstant.ORDER_TIMEOUT_LADDER.size());
+            log.warn("[订单超时消息] 段号超出阶梯范围，不发送。orderNumber={}, step={}, 总段数={}",
+                    orderNumber, step, MqOrderConstant.ORDER_TIMEOUT_LADDER.size());
             return false;
         }
 
@@ -92,13 +90,13 @@ public class OrderTimeoutMqSender {
             rabbitTemplate.convertAndSend(
                     MqOrderConstant.ORDER_DELAY_EXCHANGE,
                     MqOrderConstant.ORDER_DELAY_ROUTINGKEY,
-                    orderId,
+                    orderNumber,
                     processor);
-            log.info("[订单超时消息] 第 {} 段延时消息已发送，orderId={}, delay={}ms", step, orderId, delay);
+            log.info("[订单超时消息] 第 {} 段延时消息已发送，orderNumber={}, delay={}ms", step, orderNumber, delay);
             return true;
         } catch (Exception e) {
             // 事务已提交，异常无法回滚，此处仅记录，交由定时任务兜底
-            log.error("[订单超时消息] 第 {} 段延时消息发送失败，orderId={}", step, orderId, e);
+            log.error("[订单超时消息] 第 {} 段延时消息发送失败，orderNumber={}", step, orderNumber, e);
             return false;
         }
     }

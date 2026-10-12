@@ -17,4 +17,6 @@ public class ShikeApplication {
         SpringApplication.run(ShikeApplication.class, args);
         log.info("server started");
     }
+
+
 }

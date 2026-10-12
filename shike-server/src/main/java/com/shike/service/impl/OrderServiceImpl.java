@@ -5,16 +5,20 @@ import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.shike.constant.MessageConstant;
+import com.shike.constant.MqOrderConstant;
 import com.shike.dto.OrdersPageQueryDTO;
 import com.shike.dto.OrdersPaymentDTO;
 import com.shike.dto.OrdersSubmitDTO;
+import com.shike.dto.event.OrderCreatedEvent;
 import com.shike.entity.*;
 import com.shike.exception.AddressBookBusinessException;
 import com.shike.exception.OrderBusinessException;
 import com.shike.exception.ShoppingCartBusinessException;
 import com.shike.mapper.*;
+import com.shike.result.DeliveryDistanceResult;
 import com.shike.result.PageResult;
 import com.shike.service.OrderService;
+import com.shike.utils.BaiduMapUtil;
 import com.shike.utils.CurrentHolder;
 import com.shike.utils.WeChatPayUtil;
 import com.shike.vo.OrderPaymentVO;
@@ -22,8 +26,10 @@ import com.shike.vo.OrderStatisticsVO;
 import com.shike.vo.OrderSubmitVO;
 import com.shike.vo.OrderVO;
 import com.shike.websocket.WebSocketServer;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -35,6 +41,7 @@ import java.util.stream.Collectors;
 
 
 @Service
+@Slf4j
 public class OrderServiceImpl implements OrderService {
 
     @Autowired
@@ -56,31 +63,91 @@ public class OrderServiceImpl implements OrderService {
     private WeChatPayUtil weChatPayUtil;
     @Autowired
     private WebSocketServer webSocketServer;
+    @Autowired
+    private BaiduMapUtil baiduMapUtil;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
 
     @Override
     @Transactional
     public OrderSubmitVO submit(OrdersSubmitDTO dto) {
+        Long userId = CurrentHolder.get();
 
+        // 1. 数据校验：收货地址存在、在配送范围内、购物车非空
+        AddressBook addressBook = validateAddress(dto.getAddressBookId());
+        List<ShoppingCart> shoppingCartList = getUserShoppingCart(userId);
 
+        // 2. 组装并持久化订单（订单表 1 条）
+        Orders orders = buildOrder(dto, addressBook);
+        saveOrder(orders);
 
-        // 处理业务异常  收货地，购物车数据为空
-        AddressBook addressBook = addressBookMapper.getById(dto.getAddressBookId());
+        // 3. 持久化订单明细（订单明细表 n 条）
+        saveOrderDetails(orders.getId(), shoppingCartList);
+
+        // 4. 清空用户购物车
+        clearShoppingCart(userId);
+
+        // 5. 发布订单创建事件：由 OrderTimeoutMqSender 在【事务提交后】发送第一段延时消息，
+        //    保证消费者拿到消息时订单已落库可见，且事务回滚时不会发出孤儿消息。
+        //    消息体使用订单号（订单唯一业务标识），而非自增 id。
+        eventPublisher.publishEvent(OrderCreatedEvent.builder()
+                .orderId(orders.getId())
+                .orderNumber(orders.getNumber())
+                .build());
+
+        // 6. 封装返回对象
+        return OrderSubmitVO.builder()
+                .id(orders.getId())
+                .orderTime(orders.getOrderTime())
+                .orderNumber(orders.getNumber())
+                .orderAmount(orders.getAmount())
+                .build();
+    }
+
+    /**
+     * 校验收货地址：存在性 + 是否在商家配送范围内。
+     *
+     * @param addressBookId 地址簿 id
+     * @return 收货地址
+     * @throws AddressBookBusinessException 地址不存在
+     * @throws OrderBusinessException       地址无法解析或超出配送范围
+     */
+    private AddressBook validateAddress(Long addressBookId) {
+        AddressBook addressBook = addressBookMapper.getById(addressBookId);
         if (addressBook == null) {
             throw new AddressBookBusinessException(MessageConstant.ADDRESS_BOOK_IS_NULL);
         }
+        // 校验收货地址是否在商家配送范围内（商家地址、配送范围取自配置文件）
+        checkDeliveryRange(addressBook);
+        return addressBook;
+    }
 
-        ShoppingCart shoppingCart = new ShoppingCart();
-
-        Long userId = CurrentHolder.get();
-        shoppingCart.setUserId(userId);
-        List<ShoppingCart> shoppingCartList = shoppingCartMapper.list(shoppingCart);
-
+    /**
+     * 校验并获取当前用户的购物车数据。
+     *
+     * @param userId 用户 id
+     * @return 购物车列表（非空）
+     * @throws ShoppingCartBusinessException 购物车为空
+     */
+    private List<ShoppingCart> getUserShoppingCart(Long userId) {
+        ShoppingCart query = ShoppingCart.builder().userId(userId).build();
+        List<ShoppingCart> shoppingCartList = shoppingCartMapper.list(query);
         if (shoppingCartList == null || shoppingCartList.isEmpty()) {
             throw new ShoppingCartBusinessException(MessageConstant.SHOPPING_CART_IS_NULL);
         }
-        // 向订单表插入1条数据
+        return shoppingCartList;
+    }
 
+    /**
+     * 根据提交参数与收货地址组装订单实体（不落库）。
+     *
+     * @param dto         下单参数
+     * @param addressBook 收货地址
+     * @return 待持久化的订单
+     */
+    private Orders buildOrder(OrdersSubmitDTO dto, AddressBook addressBook) {
         Orders orders = new Orders();
         BeanUtils.copyProperties(dto, orders);
         // 下单时间
@@ -97,30 +164,76 @@ public class OrderServiceImpl implements OrderService {
         orders.setPhone(addressBook.getPhone());
         // 用户id
         orders.setUserId(addressBook.getUserId());
+        return orders;
+    }
 
+    /**
+     * 持久化订单，插入后回填自增主键。
+     *
+     * @param orders 订单实体
+     */
+    private void saveOrder(Orders orders) {
         orderMapper.insert(orders);
+    }
 
-        List<OrderDetail> orderDetailList = new ArrayList<>();
-
+    /**
+     * 将由购物车组成的订单明细批量持久化。
+     *
+     * @param orderId          订单 id
+     * @param shoppingCartList 购物车数据
+     */
+    private void saveOrderDetails(Long orderId, List<ShoppingCart> shoppingCartList) {
+        List<OrderDetail> orderDetailList = new ArrayList<>(shoppingCartList.size());
         for (ShoppingCart cart : shoppingCartList) {
             OrderDetail orderDetail = new OrderDetail();
             BeanUtils.copyProperties(cart, orderDetail);
-            orderDetail.setOrderId(orders.getId()); // 设置当前订单明细关联的订单id
+            // 关联当前订单 id
+            orderDetail.setOrderId(orderId);
             orderDetailList.add(orderDetail);
         }
-        // 向订单明细表插入n条数据
         orderDetailMapper.insertBatch(orderDetailList);
+    }
 
-        // 下单成功后 清空用户购物车数据
-        shoppingCartMapper.deleteById(userId);
+    /**
+     * 下单成功后清空该用户的购物车数据。
+     *
+     * @param userId 用户 id
+     */
+    private void clearShoppingCart(Long userId) {
+        shoppingCartMapper.cleanById(userId);
+    }
 
-        // 封装vo对象
-        return OrderSubmitVO.builder()
-                .id(orders.getId())
-                .orderTime(orders.getOrderTime())
-                .orderNumber(orders.getNumber())
-                .orderAmount(orders.getAmount())
-                .build();
+    /**
+     * 校验收货地址是否在商家配送范围内。
+     * 商家地址（shike.baidumap.shop-address）与最大配送距离（shike.baidumap.delivery-scope，单位：米）均来自配置文件。
+     * 若地址解析失败或超出配送范围，抛出 {@link OrderBusinessException}，由全局异常处理器返回提示。
+     *
+     * @param addressBook 收货地址簿
+     */
+    private void checkDeliveryRange(AddressBook addressBook) {
+        // 拼接完整收货地址，提升地理编码成功率
+        String userAddress = String.join("",
+                nullToEmpty(addressBook.getProvinceName()),
+                nullToEmpty(addressBook.getCityName()),
+                nullToEmpty(addressBook.getDistrictName()),
+                nullToEmpty(addressBook.getDetail()));
+
+        DeliveryDistanceResult distanceResult = baiduMapUtil.getDistanceFromShop(userAddress);
+        if (!Boolean.TRUE.equals(distanceResult.getSuccess())) {
+            log.error("收货地址解析失败，addressBookId={}, address={}", addressBook.getId(), userAddress);
+            throw new OrderBusinessException(MessageConstant.ADDRESS_GEOCODE_FAILED);
+        }
+
+        log.info("下单距离校验：addressBookId={}, address={}, 距离={}米, 是否可配送={}",
+                addressBook.getId(), userAddress, distanceResult.getDistance(), distanceResult.getCanDeliver());
+        if (!Boolean.TRUE.equals(distanceResult.getCanDeliver())) {
+            throw new OrderBusinessException(MessageConstant.OUT_OF_DELIVERY_RANGE);
+        }
+    }
+
+    /** null 安全的字符串转换 */
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
 
@@ -356,6 +469,48 @@ public class OrderServiceImpl implements OrderService {
 
         // ws 推送催单
         webSocketServer.sendToAllClient(JSON.toJSONString(map));
+    }
+
+    @Override
+    public Orders getByNumber(String orderNumber) {
+        if (orderNumber == null || orderNumber.isEmpty()) {
+            return null;
+        }
+        // 供 MQ 消费者 / 定时任务使用的内部查询，不做用户归属校验
+        return orderMapper.getByNumber(orderNumber);
+    }
+
+    @Override
+    @Transactional
+    public boolean closeTimeOutOrder(String orderNumber) {
+        if (orderNumber == null || orderNumber.isEmpty()) {
+            log.warn("[订单超时关闭] orderNumber 为空，忽略");
+            return false;
+        }
+        Orders ordersDB = orderMapper.getByNumber(orderNumber);
+        if (ordersDB == null) {
+            log.warn("[订单超时关闭] 订单不存在，orderNumber={}", orderNumber);
+            return false;
+        }
+        // 幂等：只有仍处于「待付款」的订单才需要关闭；
+        // 用户中途支付后会变为待接单，此处直接返回，避免误取消已支付订单
+        if (!Orders.PENDING_PAYMENT.equals(ordersDB.getStatus())) {
+            log.info("[订单超时关闭] 订单已支付或已处理，无需关闭，orderNumber={}, status={}, payStatus={}",
+                    orderNumber, ordersDB.getStatus(), ordersDB.getPayStatus());
+            return false;
+        }
+
+        Orders orders = new Orders();
+        // update 需要自增主键定位记录，主键取自查到的订单实体（业务上仍以 orderNumber 为入口）
+        orders.setId(ordersDB.getId());
+        orders.setStatus(Orders.CANCELLED);
+        orders.setCancelReason(MqOrderConstant.ORDER_TIMEOUT_CANCEL_REASON);
+        orders.setCancelTime(LocalDateTime.now());
+        orderMapper.update(orders);
+
+        log.info("[订单超时关闭] 订单已超时自动取消，orderNumber={}, orderId={}",
+                orderNumber, ordersDB.getId());
+        return true;
     }
 
     private List<OrderVO> getOrderVOList(Page<Orders> page) {

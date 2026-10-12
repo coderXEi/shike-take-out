@@ -10,7 +10,7 @@ import com.shike.result.Result;
 import com.shike.service.UserService;
 import com.shike.utils.JwtUtil;
 import com.shike.vo.UserLoginVO;
-import io.swagger.annotations.Api;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +24,7 @@ import java.util.Map;
 @RestController
 @Slf4j
 @RequestMapping("/user/user")
-@Api(tags = "C端用户接口")
+@Tag(name = "C端用户接口")
 public class UserController {
 
     @Autowired

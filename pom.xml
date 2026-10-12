@@ -6,7 +6,7 @@
     <parent>
         <artifactId>spring-boot-starter-parent</artifactId>
         <groupId>org.springframework.boot</groupId>
-        <version>2.7.3</version>
+        <version>3.3.5</version>
     </parent>
     <groupId>com.shike</groupId>
     <artifactId>shike-take-out</artifactId>
@@ -18,18 +18,45 @@
         <module>shike-server</module>
     </modules>
     <properties>
-        <mybatis.spring>2.2.0</mybatis.spring>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <!--
+            显式声明源码/资源/报告编码为 UTF-8。
+            否则在 Windows 中文环境下 Maven 会回退到平台默认编码（GBK/CP936），
+            导致源码中的中文字面量被编译成乱码字节，运行期读取后变成 "???"。
+        -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+        <mybatis.spring>3.0.3</mybatis.spring>
         <lombok>1.18.42</lombok>
-        <fastjson>1.2.76</fastjson>
+        <fastjson>1.2.83</fastjson>
         <commons.lang>2.6</commons.lang>
-        <druid>1.2.1</druid>
-        <pagehelper>1.3.0</pagehelper>
-        <aliyun.sdk.oss>3.10.2</aliyun.sdk.oss>
-        <knife4j>3.0.2</knife4j>
-        <aspectj>1.9.4</aspectj>
-        <jjwt>0.9.1</jjwt>
-        <jaxb-api>2.3.1</jaxb-api>
-        <poi>3.16</poi>
+        <druid>1.2.23</druid>
+        <pagehelper>2.1.0</pagehelper>
+        <aliyun.sdk.oss>3.17.4</aliyun.sdk.oss>
+        <aspectj>1.9.22</aspectj>
+        <!-- jjwt 0.12.x：兼容 JDK 17，拆分为 api/impl/jackson 三个构件 -->
+        <jjwt>0.12.6</jjwt>
+        <poi>5.2.5</poi>
+        <!--
+            SpringDoc OpenAPI 2.x：Spring Boot 3 + jakarta 下的接口文档方案，
+            替代已无法与 SB3 兼容的 knife4j 3.x / springfox。
+            配合 knife4j-openapi3-jakarta-spring-boot-starter 保留 doc.html 界面。
+        -->
+        <knife4j>4.5.0</knife4j>
+        <springdoc>2.6.0</springdoc>
+        <!--
+            LangChain4j 版本说明：
+            升级到 JDK 17 + Spring Boot 3 后使用 1.x 系列。
+            注意：LangChain4j 的“核心”与“集成/Starter”采用两条版本线：
+              - 核心（langchain4j / langchain4j-open-ai）：稳定版 1.0.1
+              - 集成与 Starter（ollama / qdrant / spring-boot-starter）：1.0.1-beta6（基于 core 1.0.1）
+            两者必须匹配使用，否则会出现 NoSuchMethodError。
+        -->
+        <langchain4j.version>1.0.1</langchain4j.version>
+        <langchain4j.beta.version>1.0.1-beta6</langchain4j.beta.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -59,7 +86,7 @@
 
             <dependency>
                 <groupId>com.alibaba</groupId>
-                <artifactId>druid-spring-boot-starter</artifactId>
+                <artifactId>druid-spring-boot-3-starter</artifactId>
                 <version>${druid}</version>
             </dependency>
 
@@ -71,7 +98,7 @@
 
             <dependency>
                 <groupId>com.github.xiaoymin</groupId>
-                <artifactId>knife4j-spring-boot-starter</artifactId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
                 <version>${knife4j}</version>
             </dependency>
 
@@ -89,7 +116,17 @@
 
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
-                <artifactId>jjwt</artifactId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
                 <version>${jjwt}</version>
             </dependency>
 
@@ -97,12 +134,6 @@
                 <groupId>com.aliyun.oss</groupId>
                 <artifactId>aliyun-sdk-oss</artifactId>
                 <version>${aliyun.sdk.oss}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>javax.xml.bind</groupId>
-                <artifactId>jaxb-api</artifactId>
-                <version>${jaxb-api}</version>
             </dependency>
 
             <!-- poi -->
@@ -122,6 +153,60 @@
                 <artifactId>wechatpay-apache-httpclient</artifactId>
                 <version>0.4.8</version>
             </dependency>
+
+            <!--
+                ==================== LangChain4j（RAG） ====================
+                升级至 JDK 17 + Spring Boot 3 后使用 1.x 系列，统一在此声明版本。
+
+                Embedding 模型不在 JVM 进程内运行，改为调用外部服务：
+
+                - langchain4j                       ：核心 API（AiServices / EmbeddingStore 等）
+                - langchain4j-qdrant                ：Qdrant 向量库 EmbeddingStore 适配器
+                - langchain4j-ollama                ：本地 Ollama（Chat + Embedding）客户端
+                - langchain4j-open-ai               ：OpenAI 兼容的远程 Chat / Embedding 客户端
+                - langchain4j-spring-boot-starter   ：Spring Boot 自动配置，支持声明式 @AiService
+            -->
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-qdrant</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai</artifactId>
+                <version>${langchain4j.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>dev.langchain4j</groupId>
+                <artifactId>langchain4j-ollama-spring-boot-starter</artifactId>
+                <version>${langchain4j.beta.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 </project>

@@ -85,5 +85,78 @@
         </where>
     </select>
 
+
+    <!--
+        近 N 天已完成订单中销量 TOP-K 的菜品。
+        说明：
+        1. 只统计菜品（od.dish_id 非空），套餐明细不计入；
+        2. 用 inner join dish 过滤掉已被删除的菜品，并要求菜品仍在售（status = 1），
+           避免把停售商品加入【大家都在买】后用户点进去是空的；
+        3. 订单状态取「已完成」，时间窗口以订单下单时间倒推 #{days} 天。
+    -->
+    <select id="getHotDish" resultType="com.shike.vo.DishVO">
+        select d.id,
+               d.name,
+               d.image,
+               d.price,
+               d.category_id,
+               d.description,
+               d.status,
+               sum(od.number) as saleCount
+        from order_detail od
+                 inner join orders o on od.order_id = o.id
+                 inner join dish d on od.dish_id = d.id
+        where o.status = 5
+          and o.order_time &gt;= date_sub(now(), interval #{days} day)
+          and d.status = 1
+        group by d.id, d.name, d.image, d.price, d.category_id, d.description, d.status
+        order by saleCount desc, d.id asc
+        limit #{topNum}
+
+    </select>
+
+
+    <!--
+        【为你推荐】个性化推荐：
+        1. 子查询 t 取用户近 #{days} 天已完成订单中购买量 TOP-{categoryTopN} 的分类；
+        2. 外层在这些偏好分类的「在售」菜品中挑选，用全站销量作为推荐排序权重，
+           使推荐既贴合口味又不止于用户买过的菜；
+        3. 无历史订单时子查询为空 -> 外层 in 为空 -> 返回空列表，
+           由 Service 层兜底（未登录/无偏好时回退到【大家都在买】快照或空列表）。
+    -->
+    <select id="getRecommendDishByUser" resultType="com.shike.vo.DishVO">
+        select d.id,
+               d.name,
+               d.image,
+               d.price,
+               d.category_id,
+               d.description,
+               d.status
+        from dish d
+        where d.status = 1
+          and d.category_id in (
+              select t.category_id from (
+                  select d2.category_id
+                  from order_detail od
+                           inner join orders o on od.order_id = o.id
+                           inner join dish d2 on od.dish_id = d2.id
+                  where o.user_id = #{userId}
+                    and o.status = 5
+                    and o.order_time &gt;= date_sub(now(), interval #{days} day)
+                  group by d2.category_id
+                  order by sum(od.number) desc
+                  limit #{categoryTopN}
+              ) t
+          )
+        order by (
+            select ifnull(sum(od3.number), 0)
+            from order_detail od3
+                     inner join orders o3 on od3.order_id = o3.id
+            where od3.dish_id = d.id
+              and o3.status = 5
+        ) desc, d.id asc
+        limit #{topNum}
+    </select>
+
 </mapper>
 

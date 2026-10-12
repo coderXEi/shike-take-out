@@ -15,7 +15,7 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @Slf4j
-@ConditionalOnProperty(prefix = "spring.rabbitmq.listener.simple.retry.enabled",havingValue = "true")
+@ConditionalOnProperty(prefix = "spring.rabbitmq.listener.simple.retry", name = "enabled", havingValue = "true")
 public class ErrorConfiguration {
 
     // 定义兜底的异常 消息处理方案

@@ -41,8 +41,8 @@
         </dependency>
 
         <dependency>
-            <groupId>mysql</groupId>
-            <artifactId>mysql-connector-java</artifactId>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
         </dependency>
 
@@ -63,7 +63,7 @@
 
         <dependency>
             <groupId>com.alibaba</groupId>
-            <artifactId>druid-spring-boot-starter</artifactId>
+            <artifactId>druid-spring-boot-3-starter</artifactId>
         </dependency>
 
         <dependency>
@@ -83,7 +83,7 @@
 
         <dependency>
             <groupId>com.github.xiaoymin</groupId>
-            <artifactId>knife4j-spring-boot-starter</artifactId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
         </dependency>
 
         <dependency>
@@ -101,9 +101,16 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!--
+            RabbitMQ：应用模块需要 RabbitTemplate / RabbitAdmin / ConnectionFactory
+            等 spring-rabbit 类型，以及 Spring Boot 的 RabbitMQ 自动配置，
+            故在此引入完整 starter。
+            （shike-common 中的 DelayMessageProcessor 仅依赖核心 spring-amqp，
+            两者是传递依赖关系，不会重复。）
+        -->
         <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
 
         <!-- poi -->
@@ -115,13 +122,90 @@
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
         </dependency>
+
+        <!--
+            ==================== LangChain4j（RAG） ====================
+            版本由父 POM 的 dependencyManagement 统一管理。
+            仅引入 RAG 所需的最小集合：核心 API + Qdrant 向量库 + 外部 Embedding 客户端。
+
+            Embedding 不再在 JVM 进程内运行：
+              - langchain4j-ollama    ：调用本地 Ollama 部署的 Embedding 模型（默认）
+              - langchain4j-open-ai   ：调用 OpenAI 兼容的远程 Embedding API
+        -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-qdrant</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-ollama</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai</artifactId>
+        </dependency>
+
+        <!--
+            LangChain4j Spring Boot Starter：
+            提供声明式 @AiService 注解与自动扫描装配（无需手写 AiServices.builder 的 @Bean），
+            并支持通过 application.yml 配置 Chat / Embedding 模型。
+        -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-spring-boot-starter</artifactId>
+        </dependency>
+
+        <!--
+            LangChain4j 各提供方的 Spring Boot Starter：
+            根据 application.yml 中的 langchain4j.open-ai.* / langchain4j.ollama.* 自动装配模型 Bean。
+            本项目同时支持远程 OpenAI 兼容 API 与本地 Ollama。
+        -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-open-ai-spring-boot-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-ollama-spring-boot-starter</artifactId>
+        </dependency>
+
+
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <!-- 显式声明注解处理器，确保 Lombok 生效 -->
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <!--
+                        运行期显式指定 UTF-8。
+                        JDK 17 在 Windows 下 file.encoding 默认 GBK，
+                        而 LangChain4j 读取 @SystemMessage(fromResource) 时使用
+                        new Scanner(InputStream)（不传 charset），会按 file.encoding 解码，
+                        导致 system-prompt.txt 等 UTF-8 资源被读成乱码。
+                    -->
+                    <jvmArguments>-Dfile.encoding=UTF-8</jvmArguments>
+                </configuration>
             </plugin>
         </plugins>
     </build>
