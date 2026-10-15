@@ -76,4 +76,14 @@ public interface SetmealMapper {
      * @return
      */
     Integer countByMap(Map map);
+
+    /**
+     * 查询全部启用套餐及分类名称，供商品向量全量重建使用。
+     *
+     * <p>只返回 status = 1（启用）的套餐；关联 category 表带出 categoryName，
+     * 供语料拼装与 Qdrant 元信息使用。</p>
+     *
+     * @return 启用套餐列表（含 categoryName），可能为空
+     */
+    List<SetmealVO> listOnSaleWithCategory();
 }

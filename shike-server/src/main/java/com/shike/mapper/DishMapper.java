@@ -115,4 +115,14 @@ public interface DishMapper {
                                         @Param("days") Integer days,
                                         @Param("categoryTopN") Integer categoryTopN,
                                         @Param("topNum") Integer topNum);
+
+    /**
+     * 查询全部在售菜品及分类名称，供商品向量全量重建使用。
+     *
+     * <p>只返回 status = 1（起售）的菜品；关联 category 表带出 categoryName，
+     * 供语料拼装与 Qdrant 元信息使用。</p>
+     *
+     * @return 在售菜品列表（含 categoryName），可能为空
+     */
+    List<DishVO> listOnSaleWithCategory();
 }

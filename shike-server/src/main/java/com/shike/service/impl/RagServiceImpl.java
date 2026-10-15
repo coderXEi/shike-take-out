@@ -7,10 +7,7 @@ import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
-import dev.langchain4j.store.embedding.EmbeddingMatch;
-import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
-import dev.langchain4j.store.embedding.EmbeddingStore;
-import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
+import dev.langchain4j.store.embedding.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -58,7 +55,9 @@ public class RagServiceImpl implements RagService {
         Document document = Document.from(text, documentMetadata);
 
         // 切分 + 向量化 + 写入 Qdrant
-        embeddingStoreIngestor.ingest(document);
+        IngestionResult ingest = embeddingStoreIngestor.ingest(document);
+
+        log.info("ingest result:{}",ingest.toString());
 
         // EmbeddingStoreIngestor 未回传条数，这里按切分结果估算用于日志/返回值
         int estimated = estimateSegments(text);

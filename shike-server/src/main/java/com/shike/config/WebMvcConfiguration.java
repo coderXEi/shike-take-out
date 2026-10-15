@@ -5,7 +5,6 @@ import com.shike.interceptor.JwtTokenUserInterceptor;
 import com.shike.json.JacksonObjectMapper;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +22,7 @@ import java.util.List;
  * 配置类，注册web层相关组件
  *
  * <p>注意：此处实现 {@link WebMvcConfigurer} 而<b>不是</b>继承 WebMvcConfigurationSupport。
- * 继承 WebMvcConfigurationSupport 会关闭 Spring Boot 的 WebMvc 自动配置，
+ * 注意：继承 WebMvcConfigurationSupport 会关闭 Spring Boot 的 WebMvc 自动配置，
  * 进而导致 SpringDoc 的 {@code SpringDocConfigProperties}（由自动配置注册）不会生效，
  * 使得 {@code springdoc.api-docs.*}、{@code springdoc.cache.*} 等配置项全部被忽略。</p>
  */
@@ -63,56 +62,45 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     }
 
     /**
-     * 通过 SpringDoc（knife4j-openapi3）生成接口文档。
+     * 通过 SpringDoc（knife4j-openapi3）生成接口文档，按包分为「管理端接口」「用户端接口」两组。
      *
      * <p>Spring Boot 3 + jakarta 下，原先的 knife4j 3.x / springfox 方案（{@code Docket}）
      * 已无法使用，改为 SpringDoc 的 {@link GroupedOpenApi} 按包分组；
      * 文档界面仍由 knife4j 提供，访问 {@code /doc.html}。</p>
+     *
+     * <p><b>左侧菜单的标签（{@code tags}）由 SpringDoc 根据 Controller 上的
+     * {@code @Tag} 自动生成，无需手工维护。</b>SpringDoc 的
+     * {@code OpenAPIService#buildTags} 会在为一个分组构建文档时，
+     * 读取该分组内 Controller / 方法上的 {@code @Tag} 并塞进分组文档的 {@code tags} 数组，
+     * Knife4j 正是据此渲染左侧菜单。</p>
+     *
+     * <p><b>因此严禁再提供全局的 {@link OpenAPI} Bean。</b>SpringDoc 会以缓存的
+     * （即全局 Bean 构建出的）{@code OpenAPI} 作为<b>每个</b>分组文档的起点，
+     * 于是全局 Bean 里声明的 {@code tags} 会被带进所有分组：
+     * 切到「管理端」时左侧却列出用户端的所有标签（接口虽不可调用，但菜单冗余）。
+     * 两个分组各写一份 {@code tags} 同样是错的（写少了会漏、写多了会串）。</p>
      */
     @Bean
     public GroupedOpenApi adminApi() {
         return GroupedOpenApi.builder()
                 .group("管理端接口")
                 .packagesToScan("com.shike.controller.admin")
+                .addOpenApiCustomizer(openApi -> openApi
+                        .info(new Info().title("食客外卖接口文档 - 管理端").version("1.0")))
                 .build();
     }
 
     /**
-     * 显式声明 OpenAPI 根级信息。
-     *
-     * <p>修复 Knife4j 4.5.0 白屏 / “Knife4j 文档请求异常”：Knife4j 4.5.0 依赖的
-     * SpringDoc 2.3.0 在生成 {@link GroupedOpenApi} 分组文档时不会输出根级 {@code tags} 数组，
-     * 而 Knife4j 前端正是依据该数组构建左侧接口菜单，取不到就渲染成空白页。
-     * 此处显式提供带有 {@code tags} 的 OpenAPI 对象，保证菜单可正常渲染。</p>
+     * 用户端接口分组。标签同样由 Controller 上的 {@code @Tag} 自动生成，
+     * 详见 {@link #adminApi()} 的说明。
      */
-    @Bean
-    public OpenAPI shikeOpenAPI() {
-        return new OpenAPI()
-                .info(new Info().title("食客外卖接口文档").version("1.0"))
-                .addTagsItem(new Tag().name("员工相关接口"))
-                .addTagsItem(new Tag().name("分类相关接口"))
-                .addTagsItem(new Tag().name("菜品相关接口"))
-                .addTagsItem(new Tag().name("套餐相关接口"))
-                .addTagsItem(new Tag().name("店铺设置接口"))
-                .addTagsItem(new Tag().name("管理端订单管理接口"))
-                .addTagsItem(new Tag().name("工作台相关接口"))
-                .addTagsItem(new Tag().name("数据统计 相关接口"))
-                .addTagsItem(new Tag().name("公共接口服务"))
-                .addTagsItem(new Tag().name("RAG 调试接口"))
-                .addTagsItem(new Tag().name("C端用户接口"))
-                .addTagsItem(new Tag().name("C端-分类接口"))
-                .addTagsItem(new Tag().name("C端-菜品浏览接口"))
-                .addTagsItem(new Tag().name("C端-套餐浏览接口"))
-                .addTagsItem(new Tag().name("C端地址簿接口"))
-                .addTagsItem(new Tag().name("用户端 购物车接口"))
-                .addTagsItem(new Tag().name("用户端订单类接口"));
-    }
-
     @Bean
     public GroupedOpenApi userApi() {
         return GroupedOpenApi.builder()
                 .group("用户端接口")
                 .packagesToScan("com.shike.controller.user")
+                .addOpenApiCustomizer(openApi -> openApi
+                        .info(new Info().title("食客外卖接口文档 - 用户端").version("1.0")))
                 .build();
     }
 

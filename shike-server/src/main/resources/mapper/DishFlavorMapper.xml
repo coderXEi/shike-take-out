@@ -16,4 +16,12 @@
             #{dishId}
         </foreach>
     </delete>
+
+    <!-- 商品向量入库用：按菜品id集合批量查口味，避免 N+1 -->
+    <select id="getByDishIds" resultType="DishFlavor">
+        select * from dish_flavor where dish_id in
+        <foreach collection="dishIds" open="(" close=")" separator="," item="dishId">
+            #{dishId}
+        </foreach>
+    </select>
 </mapper>

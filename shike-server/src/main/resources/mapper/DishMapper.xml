@@ -158,5 +158,17 @@
         limit #{topNum}
     </select>
 
+    <!--
+        商品向量全量重建用：全部在售菜品 + 分类名称。
+        只取 status = 1，停售菜品不占向量也不参与检索。
+    -->
+    <select id="listOnSaleWithCategory" resultType="com.shike.vo.DishVO">
+        select d.*, c.name categoryName
+        from dish d
+                 left outer join category c on d.category_id = c.id
+        where d.status = 1
+        order by d.id asc
+    </select>
+
 </mapper>
 
